@@ -1198,12 +1198,12 @@ extension CustomSignedIntegerHelper {
     public var magnitude: Magnitude {
         guard self.isNegative else { return Magnitude(self) }
         var bytes = self.bigEndianBytes
-        //bytes = twosComplement(bytes)
+        bytes = twosComplement(bytes)
         
         if !IS_BIGENDIAN { bytes.reverse() }
         
         let mag: Magnitude = bytes.withUnsafeBufferPointer {
-            return $0.baseAddress!.withMemoryRebound(to: Self.self, capacity: 1) {
+            return $0.baseAddress!.withMemoryRebound(to: Magnitude.self, capacity: 1) {
                 return Magnitude($0.pointee)
             }
         }
