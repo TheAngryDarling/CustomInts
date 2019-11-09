@@ -1,14 +1,40 @@
 import XCTest
+import Foundation
 #if os(Linux)
 import Glibc
 #endif
 @testable import CustomInts
+import CustomCoders
 
 fileprivate let IS_BIGENDIAN: Bool = {
     let number: UInt32 = 0x12345678
     let converted = number.bigEndian
     return (number == converted)
 }()
+
+/// PatchedNumeric is used to help patch the Magnitude to include Fixed With Int
+protocol PatchedFixedWidthInteger: FixedWidthInteger where Magnitude: PatchedFixedWidthInteger { }
+
+extension Int8: PatchedFixedWidthInteger { }
+extension UInt8: PatchedFixedWidthInteger { }
+extension Int16: PatchedFixedWidthInteger { }
+extension UInt16: PatchedFixedWidthInteger { }
+extension Int32: PatchedFixedWidthInteger { }
+extension UInt32: PatchedFixedWidthInteger { }
+extension Int64: PatchedFixedWidthInteger { }
+extension UInt64: PatchedFixedWidthInteger { }
+extension Int: PatchedFixedWidthInteger { }
+extension UInt: PatchedFixedWidthInteger { }
+
+extension Int24: PatchedFixedWidthInteger { }
+extension UInt24: PatchedFixedWidthInteger { }
+extension Int40: PatchedFixedWidthInteger { }
+extension UInt40: PatchedFixedWidthInteger { }
+extension Int48: PatchedFixedWidthInteger { }
+extension UInt48: PatchedFixedWidthInteger { }
+extension Int56: PatchedFixedWidthInteger { }
+extension UInt56: PatchedFixedWidthInteger { }
+
 
 /*fileprivate func binaryDivision(_ lhs: [UInt8], _ rhs: [UInt8], isSigned signed: Bool) -> (quotient: [UInt8], remainder: [UInt8]) {
  
@@ -40,7 +66,19 @@ fileprivate let IS_BIGENDIAN: Bool = {
  
  
  }*/
-
+fileprivate extension UnsafeBufferPointer {
+    #if !swift(>=4.0.4)
+        func compactMap<ElementOfResult>(_ transform: (Element) throws -> ElementOfResult?) rethrows -> [ElementOfResult] {
+            var rtn: [ElementOfResult] = []
+            for element in self {
+                if let nE = try transform(element) {
+                    rtn.append(nE)
+                }
+            }
+            return rtn
+        }
+    #endif
+}
 fileprivate func getBinaryString(for value: [UInt8]) -> String {
     var rtn: String = ""
     for b in value {
@@ -59,7 +97,7 @@ fileprivate extension UInt8 {
 
 
 fileprivate extension BinaryInteger {
-    fileprivate var isZero: Bool {
+    var isZero: Bool {
         var mutableSource = self
         let size = MemoryLayout.size(ofValue: mutableSource)
         let rtn: Bool =  withUnsafePointer(to: &mutableSource) {
@@ -71,7 +109,7 @@ fileprivate extension BinaryInteger {
         return rtn
     }
     
-    fileprivate var mostSignificantByte: UInt8 {
+    var mostSignificantByte: UInt8 {
         var mutableSource = self
         let size = MemoryLayout.size(ofValue: mutableSource)
         let msb: UInt8 = withUnsafePointer(to: &mutableSource) {
@@ -85,14 +123,14 @@ fileprivate extension BinaryInteger {
         return msb
     }
     
-    fileprivate var isNegative: Bool {
+    var isNegative: Bool {
         guard Self.isSigned else { return false }
         
         return ((self.mostSignificantByte & 0x80) == 0x80)
     }
     
     
-    fileprivate var integerBytes: [UInt8] {
+    var integerBytes: [UInt8] {
         var mutableSource = self
         let size = MemoryLayout.size(ofValue: mutableSource)
         let bytes: [UInt8] =  withUnsafePointer(to: &mutableSource) {
@@ -105,7 +143,7 @@ fileprivate extension BinaryInteger {
     }
     
     
-    fileprivate var bigEndianBytes: [UInt8] {
+    var bigEndianBytes: [UInt8] {
         var rtn = self.integerBytes
         if !IS_BIGENDIAN { rtn.reverse() }
         return rtn
@@ -143,28 +181,30 @@ extension FixedWidthInteger {
 }
 final class CustomIntsTests: XCTestCase {
     
-    struct BasicStructure<T>: Codable where T: (FixedWidthInteger & Codable) {
+    struct BasicStructure<T>: Codable where T: PatchedFixedWidthInteger, T: Codable {
         let value: T
     }
     
-    func testMinMaxOverflowCheck<Number>(_ numberType: Number.Type) where Number: (FixedWidthInteger ) {
+    func testMinMaxOverflowCheck<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         
         
         if true {
             let val: Number = Number.min
             let r = val.subtractingReportingOverflow(1)
             XCTAssert(r.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(r.partialValue)")
+            XCTAssertEqual(r.partialValue, Number.max)
         }
         if true {
             let val: Number = Number.max
             let r = val.addingReportingOverflow(1)
              XCTAssert(r.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(r.partialValue)")
+             XCTAssertEqual(r.partialValue, Number.min)
         }
         
         
     }
     
-    func testAddition<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    /*func testAddition<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         if Number.isSigned {
             var number: Number = Number.min
             //print(number)
@@ -188,9 +228,9 @@ final class CustomIntsTests: XCTestCase {
                 if (number != comparitor) { fatalError() }
             }
         }
-    }
+    }*/
     
-    func testSubtraction<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testSubtraction<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         if Number.isSigned {
             var number: Number = Number.max
             var comparitor: Int = Int(Number.max)
@@ -212,7 +252,7 @@ final class CustomIntsTests: XCTestCase {
         }
     }
     
-    func testBasicAddition<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testBasicAddition<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         var number: Number = Number()
         var additionValue = (number + 1)
         XCTAssert(additionValue == 1, "[\(numberType)]: Invalid addition of 0 with 1.  Expected 1, found \(additionValue)")
@@ -228,13 +268,13 @@ final class CustomIntsTests: XCTestCase {
         }
     }
     
-    func testAdditionWithOverflow<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testAdditionWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.max
         let value = number.addingReportingOverflow(1)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
     }
     
-    func testBasicSubtraction<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testBasicSubtraction<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         var number: Number = 1
         var subtractionValue: Number = (number - 1)
         XCTAssert(subtractionValue == 0, "[\(numberType)]: Invalid subtraction of 1 with 1.  Expected 0, found \(subtractionValue)")
@@ -256,13 +296,13 @@ final class CustomIntsTests: XCTestCase {
         }
     }
     
-    func testSubtractionWithOverflow<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testSubtractionWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.min
         let value = number.subtractingReportingOverflow(1)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
     }
     
-    func testBasicMultiplication<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testBasicMultiplication<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         var number: Number = 2
         var value = (number * 2)
         XCTAssert(value == 4, "[\(numberType)]: Invalid multiplication of 2 with 2.  Expected 4, found \(value)")
@@ -273,13 +313,13 @@ final class CustomIntsTests: XCTestCase {
         }
     }
     
-    func testMultiplicationWithOverflow<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testMultiplicationWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.max
         let value = number.multipliedReportingOverflow(by: 2)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
     }
     
-    func testBasicDivision<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testBasicDivision<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         
         var number: Number = 2
         var value = (number / 2)
@@ -302,34 +342,38 @@ final class CustomIntsTests: XCTestCase {
         }
     }
     
-    func testDivisionWithOverflow<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testDivisionWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.max
         let value = number.dividedReportingOverflow(by: 0)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
     }
     
     
-    func testBasicRemainder<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testBasicRemainder<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = 20
         let value = (number % 2)
-        XCTAssert(value == 0, "[\(numberType)]: Invalid remainder of 20 with 2.  Expected 0, found \(value)")
+        XCTAssert(value == 0, "[\(numberType)]: Invalid remainder of \(number) with 2.  Expected 0, found \(value)")
+        
+        let number2: Number = 5
+        let value2 = (number2 % 2)
+        XCTAssert(value2 == 1, "[\(numberType)]: Invalid remainder of \(number2) with 2.  Expected 1, found \(value2)")
     }
     
-    func testRemainderWithOverflow<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testRemainderWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.max
         let value = number.remainderReportingOverflow(dividingBy: 0)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
     }
 
     
-    func testMultipliedFullWidth<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testMultipliedFullWidth<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number = Number.max
         let r = number.multipliedFullWidth(by: 2)
         let h = Number.isSigned ? 0 : 1
         XCTAssert(r.high == h && r.low == (Number.Magnitude.max - 1), "[\(numberType)]: Invalid remainder of \(Number.max) * 2.  Expected (\(h),\(Number.Magnitude.max - 1)), found (\(r.high),\(r.low))")
     }
     
-    func testShift<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testShift<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         var value: Number = 1
         value = value << 1
         XCTAssert(value == 2, "[\(numberType)]: Invalid shift of 1 << 1.  Expected 2, found \(value)")
@@ -369,7 +413,7 @@ final class CustomIntsTests: XCTestCase {
         #endif
     }
     
-    func rand<Number>(_ numberType: Number.Type) -> Number where Number: FixedWidthInteger {
+    func rand<Number>(_ numberType: Number.Type) -> Number where Number: PatchedFixedWidthInteger {
         var upper: Int
         
         if (Number.max > UInt32.max) { upper = Int(UInt32.max) }
@@ -384,7 +428,7 @@ final class CustomIntsTests: XCTestCase {
         return val
     }
     
-    func testDataRead<Number>(_ numberType: Number.Type) where Number: FixedWidthInteger {
+    func testDataRead<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let arraySize: Int = {
             var rtn: Int = 0
             while rtn <= 1 {
@@ -440,7 +484,7 @@ final class CustomIntsTests: XCTestCase {
         print(littleEndianNumbers)*/
     }
     
-    func testEncodeDecode<Number>(_ numberType: Number.Type) where Number: (FixedWidthInteger & Codable) {
+    func testEncodeDecode<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger, Number: Codable {
         let s: BasicStructure<Number> = BasicStructure(value: rand(numberType))
         do {
             let encoder = JSONEncoder()
@@ -454,7 +498,7 @@ final class CustomIntsTests: XCTestCase {
             XCTFail("[\(numberType)]: JSON Encode/Decode: \(error)")
         }
         
-        #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+        //#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
         do {
             let encoder = PropertyListEncoder()
             let dta = try encoder.encode(s)
@@ -466,12 +510,13 @@ final class CustomIntsTests: XCTestCase {
         } catch {
             XCTFail("[\(numberType)]: Property List Encode/Decode: \(error)")
         }
-        #endif
+        //#endif
     }
     
     
-    func numberTests<Number>(_ numberType: Number.Type) where Number: (FixedWidthInteger & Codable) {
+    func numberTests<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger, Number: Codable {
         testBasicAddition(numberType)
+        //testAddition(numberType)
         testAdditionWithOverflow(numberType)
         testBasicSubtraction(numberType)
         testSubtractionWithOverflow(numberType)
@@ -482,13 +527,14 @@ final class CustomIntsTests: XCTestCase {
         testDivisionWithOverflow(numberType)
         testBasicRemainder(numberType)
         testRemainderWithOverflow(numberType)
+        testMinMaxOverflowCheck(numberType)
  
         testShift(numberType)
         testDataRead(numberType)
         testEncodeDecode(numberType)
     }
     
-    func numberTestBase<Number>(_ numberType: Number.Type) where Number: (FixedWidthInteger & SignedInteger & Codable), Number.Magnitude:  (UnsignedInteger & Codable) {
+    func numberTestBase<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger, Number: SignedInteger, Number: Codable, Number.Magnitude: Codable {
         numberTests(Number.self)
         numberTests(Number.Magnitude.self)
     }
@@ -500,10 +546,11 @@ final class CustomIntsTests: XCTestCase {
     
     
     //Standard Int Types
-    /*func test8BitInts() { numberTestBase(Int8.self) }
+    func test8BitInts() { numberTestBase(Int8.self) }
     func test16BitInts() { numberTestBase(Int16.self) }
     func test32BitInts() { numberTestBase(Int32.self) }
-    func test64BitInts() { numberTestBase(Int64.self) }*/
+    func test64BitInts() { numberTestBase(Int64.self) }
+    func testBitInts() { numberTestBase(Int.self) }
     
     
     static var allTests = [
@@ -511,5 +558,11 @@ final class CustomIntsTests: XCTestCase {
         ("test40BitInts", test40BitInts),
         ("test48BitInts", test48BitInts),
         ("test56BitInts", test56BitInts),
+        // Run standard tests to ensure all custom and standard ints function the same
+        ("test8BitInts", test8BitInts),
+        ("test16BitInts", test16BitInts),
+        ("test32BitInts", test32BitInts),
+        ("test64BitInts", test64BitInts),
+        ("testBitInts", testBitInts),
     ]
 }
