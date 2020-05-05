@@ -35,25 +35,37 @@ public protocol IntOperators {
 
 public extension IntOperators {
     
+        
+    #if !swift(>=5.2)
     static func += (lhs: inout Self, rhs: Self) {
         lhs = lhs + rhs
     }
+    #endif
     
+        
+    #if !swift(>=5.2)
     static func -= (lhs: inout Self, rhs: Self) {
         lhs = lhs - rhs
     }
+    #endif
     
+        
     static func *= (lhs: inout Self, rhs: Self) {
         lhs = lhs * rhs
     }
     
+    
+        
     static func /= (lhs: inout Self, rhs: Self) {
         lhs = lhs / rhs
     }
     
+    
+        
     static func %= (lhs: inout Self, rhs: Self) {
         lhs = lhs % rhs
     }
+    
     
 }
 

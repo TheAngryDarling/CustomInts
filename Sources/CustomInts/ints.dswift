@@ -29,9 +29,12 @@ public protocol IntOperators {
 
 public extension IntOperators {
     <% for op in intOperators { %>
+        <% if op == "+" || op == "-" { %>
+    #if !swift(>=5.2)<%}%>
     static func <%=op%>= (lhs: inout Self, rhs: Self) {
         lhs = lhs <%=op%> rhs
     }
+    <% if op == "+" || op == "-" { %>#endif<%}%>
     <% } %>
 }
 
