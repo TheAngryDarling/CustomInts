@@ -4,7 +4,7 @@
 ![Linux](https://img.shields.io/badge/os-linux-green.svg?style=flat)
 ![Apache 2](https://img.shields.io/badge/license-Apache2-blue.svg?style=flat)
 
-> Note: Versions <= 1.0.2 unfortunately do not actually work out side of the Mac Ecosystem
+> Note: Versions <= 1.0.2 unfortunately does not actually work out side of the Mac Ecosystem
 
 This kit adds additional integers with custom sizes.  They are as follows:
 24 bit ints: Int24, UInt24
