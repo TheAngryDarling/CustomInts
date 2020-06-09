@@ -299,7 +299,7 @@ final class CustomIntsTests: XCTestCase {
     func testSubtractionWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.min
         let value = number.subtractingReportingOverflow(1)
-        XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
+        XCTAssert(value.overflow, "[\(numberType)]: \(number) - 1 Expected overflow but was not signaled. \(value.partialValue)")
     }
     
     func testBasicMultiplication<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
@@ -315,8 +315,16 @@ final class CustomIntsTests: XCTestCase {
     
     func testMultiplicationWithOverflow<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
         let number: Number = Number.max
-        let value = number.multipliedReportingOverflow(by: 2)
+        var value = number.multipliedReportingOverflow(by: 2)
         XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
+        let expectedValueBase: Number = (Number.isSigned) ? Number(-1) : Number.max
+        XCTAssert(value.partialValue == (expectedValueBase - 1), "[\(numberType)]: Expected partial value of \(expectedValueBase - 1) but received \(value.partialValue)")
+        
+        if true {
+            value = Number.max.multipliedReportingOverflow(by: Number.max)
+            XCTAssert(value.overflow, "[\(numberType)]: Expected overflow but was not signaled. \(value.partialValue)")
+            XCTAssert(value.partialValue == 1, "[\(numberType)]: Expected partial value of 1 but received \(value.partialValue)")
+        }
     }
     
     func testBasicDivision<Number>(_ numberType: Number.Type) where Number: PatchedFixedWidthInteger {
