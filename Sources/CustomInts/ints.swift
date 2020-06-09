@@ -12,8 +12,6 @@ import Foundation
 
 
 
-
-
 public protocol IntOperators {
     
     static func + (lhs: Self, rhs: Self) -> Self
@@ -31,53 +29,57 @@ public protocol IntOperators {
     static func % (lhs: Self, rhs: Self) -> Self
     static func %= (lhs: inout Self, rhs: Self)
     
+    static func | (lhs: Self, rhs: Self) -> Self
+    static func |= (lhs: inout Self, rhs: Self)
+    
+    static func & (lhs: Self, rhs: Self) -> Self
+    static func &= (lhs: inout Self, rhs: Self)
+    
+    static func ^ (lhs: Self, rhs: Self) -> Self
+    static func ^= (lhs: inout Self, rhs: Self)
+    
 }
 
 public extension IntOperators {
-    
-        
-    #if !swift(>=5.2)
+
     static func += (lhs: inout Self, rhs: Self) {
         lhs = lhs + rhs
     }
-    #endif
-    
-        
-    #if !swift(>=5.2)
+
     static func -= (lhs: inout Self, rhs: Self) {
         lhs = lhs - rhs
     }
-    #endif
-    
-        
+
     static func *= (lhs: inout Self, rhs: Self) {
         lhs = lhs * rhs
     }
-    
-    
-        
+
     static func /= (lhs: inout Self, rhs: Self) {
         lhs = lhs / rhs
     }
-    
-    
-        
+
     static func %= (lhs: inout Self, rhs: Self) {
         lhs = lhs % rhs
     }
-    
-    
+
+    static func |= (lhs: inout Self, rhs: Self) {
+        lhs = lhs | rhs
+    }
+
+    static func &= (lhs: inout Self, rhs: Self) {
+        lhs = lhs & rhs
+    }
+
+    static func ^= (lhs: inout Self, rhs: Self) {
+        lhs = lhs ^ rhs
+    }
+
 }
 
 
 
 
 
-
-    
-
-    
-    
     public struct UInt24: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
     
         /// A type that represents an integer literal.
@@ -139,11 +141,13 @@ public extension IntOperators {
         public static let isSigned: Bool = false
         public static let bitWidth: Int = 24
         
-        public static let min: UInt24 = 0
+        public static let min: UInt24 = UInt24()
         public static let max: UInt24 = 16777215
         
         
-        public static var zero: UInt24 { return UInt24() }
+        public static let zero: UInt24 = UInt24()
+        internal static let one: UInt24 = 1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -232,7 +236,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -245,7 +249,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -382,8 +387,9 @@ public extension IntOperators {
         
         public func signum() -> UInt24 {
             
-                if self.isZero { return UInt24() }
-                else { return UInt24(1) }
+                if self.isZero { return UInt24.zero }
+                else { return UInt24.one }
+            
             
         }
         
@@ -403,7 +409,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: UInt24) -> (partialValue: UInt24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -419,12 +425,26 @@ public extension IntOperators {
                     return UInt24($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt32(self).addingReportingOverflow(UInt32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt32(UInt24.max) ||
+               r.partialValue < UInt32(UInt24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt24(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: UInt24) -> (partialValue: UInt24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -439,12 +459,26 @@ public extension IntOperators {
                     return UInt24($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && UInt24.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt32(self).subtractingReportingOverflow(UInt32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt32(UInt24.max) ||
+               r.partialValue < UInt32(UInt24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt24(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: UInt24) -> (high: UInt24, low: UInt24) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: UInt24.isSigned)
             
@@ -460,11 +494,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = UInt32(self).multipliedFullWidth(by: UInt32(other))
+            
+            let val = r.low
+            
+            let high = val >> UInt24.bitWidth
+            let low = val - (high << UInt24.bitWidth)
+            
+            return (high: UInt24(high), low: UInt24(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: UInt24) -> (partialValue: UInt24, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt24(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: UInt24(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = UInt24(truncatingIfNeeded: r.low)
@@ -478,7 +523,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt24.zero, overflow: false) }
+            
+            let r = UInt32(self).multipliedReportingOverflow(by: UInt32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt32(UInt24.max) ||
+               r.partialValue < UInt32(UInt24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt24(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: UInt24, low: Magnitude)) -> (quotient: UInt24, remainder: UInt24) {
@@ -493,7 +552,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: UInt24) -> (partialValue: UInt24, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: UInt24(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -501,11 +560,26 @@ public extension IntOperators {
                 let intValue: UInt = UInt(self.iValue) / UInt(rhs.iValue)
                 let hasOverflow = (intValue > UInt24.max.iValue || intValue < UInt24.min.iValue)
                 return (partialValue: UInt24(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: UInt24.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = UInt32(self).dividedReportingOverflow(by: UInt32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt32(UInt24.max) ||
+               r.partialValue < UInt32(UInt24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt24(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: UInt24) -> (partialValue: UInt24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -518,7 +592,13 @@ public extension IntOperators {
             }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = UInt32(self).remainderReportingOverflow(dividingBy: UInt32(rhs))
+            return (partialValue: UInt24(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: UInt24) -> Int {
@@ -550,7 +630,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: UInt24, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -562,7 +642,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return UInt32(lhs) == rhs
         }
         
         public static func != (lhs: UInt24, rhs: UInt24) -> Bool {
@@ -573,9 +655,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: UInt24, rhs: UInt24) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt24.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt24.isSigned)
+            return UInt32(lhs) < UInt32(rhs)
         }
         public static func < <Other>(lhs: UInt24, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -583,14 +667,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt24.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt24.isSigned) */
+            
+            return UInt32(lhs) < UInt32(rhs)
         }
         
         public static func > (lhs: UInt24, rhs: UInt24) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt32(lhs) > UInt32(rhs)
         }
         public static func > <Other>(lhs: UInt24, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt32(lhs) > rhs
         }
         
         public static func + (lhs: UInt24, rhs: UInt24) -> UInt24 {
@@ -635,9 +723,6 @@ public extension IntOperators {
             return UInt24(lhb)
             
         }
-        public static func &=(lhs: inout UInt24, rhs: UInt24) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: UInt24, rhs: UInt24) -> UInt24  {
             var lhb = lhs.bigEndianBytes
@@ -651,9 +736,7 @@ public extension IntOperators {
             return UInt24(lhb)
             
         }
-        public static func |=(lhs: inout UInt24, rhs: UInt24)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: UInt24, rhs: UInt24) -> UInt24  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -666,9 +749,7 @@ public extension IntOperators {
             return UInt24(lhb)
             
         }
-        public static func ^=(lhs: inout UInt24, rhs: UInt24)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: UInt24, rhs: UInt24) -> UInt24 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -696,6 +777,40 @@ public extension IntOperators {
             return lhs << UInt24(rhs)
         }
         
+
+        public static func += (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout UInt24, rhs: UInt24) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - UInt24 - Codable
@@ -709,7 +824,6 @@ public extension IntOperators {
             try container.encode(self)
         }
     }
-    
     
     
     public struct Int24: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
@@ -777,7 +891,11 @@ public extension IntOperators {
         public static let max: Int24 = 8388607
         
         
-        public static var zero: Int24 { return Int24() }
+        public static let zero: Int24 = Int24()
+        internal static let one: Int24 = 1
+        
+        internal static let minusOne: Int24 = -1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -875,7 +993,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -888,7 +1006,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -1025,9 +1144,10 @@ public extension IntOperators {
         
         public func signum() -> Int24 {
             
-                if self.isZero { return Int24() }
-                else if self.mostSignificantByte.hasMinusBit { return Int24(-1) }
-                else { return Int24(1) }
+                if self.isZero { return Int24.zero }
+                else if self.mostSignificantByte.hasMinusBit { return Int24.minusOne }
+                else { return Int24.one }
+            
             
         }
         
@@ -1047,7 +1167,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: Int24) -> (partialValue: Int24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -1063,12 +1183,26 @@ public extension IntOperators {
                     return Int24($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int32(self).addingReportingOverflow(Int32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int32(Int24.max) ||
+               r.partialValue < Int32(Int24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int24(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: Int24) -> (partialValue: Int24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -1083,12 +1217,26 @@ public extension IntOperators {
                     return Int24($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && Int24.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int32(self).subtractingReportingOverflow(Int32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int32(Int24.max) ||
+               r.partialValue < Int32(Int24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int24(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: Int24) -> (high: Int24, low: UInt24) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: Int24.isSigned)
             
@@ -1104,11 +1252,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = Int32(self).multipliedFullWidth(by: Int32(other))
+            
+            let val = r.low
+            
+            let high = val >> Int24.bitWidth
+            let low = val - (high << Int24.bitWidth)
+            
+            return (high: Int24(high), low: UInt24(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: Int24) -> (partialValue: Int24, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: Int24(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: Int24(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = Int24(truncatingIfNeeded: r.low)
@@ -1122,7 +1281,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: Int24.zero, overflow: false) }
+            
+            let r = Int32(self).multipliedReportingOverflow(by: Int32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int32(Int24.max) ||
+               r.partialValue < Int32(Int24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int24(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: Int24, low: Magnitude)) -> (quotient: Int24, remainder: Int24) {
@@ -1138,7 +1311,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: Int24) -> (partialValue: Int24, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: Int24(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -1146,11 +1319,26 @@ public extension IntOperators {
                 let intValue = self.iValue / rhs.iValue
                 let hasOverflow = (intValue > Int24.max.iValue || intValue < Int24.min.iValue)
                 return (partialValue: Int24(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: Int24.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = Int32(self).dividedReportingOverflow(by: Int32(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int32(Int24.max) ||
+               r.partialValue < Int32(Int24.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int24(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int24(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: Int24) -> (partialValue: Int24, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -1168,7 +1356,13 @@ public extension IntOperators {
             if isSelfNeg { selfValue = selfValue * -1  }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = Int32(self).remainderReportingOverflow(dividingBy: Int32(rhs))
+            return (partialValue: Int24(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: Int24) -> Int {
@@ -1203,7 +1397,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: Int24, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -1215,7 +1409,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return Int32(lhs) == rhs
         }
         
         public static func != (lhs: Int24, rhs: Int24) -> Bool {
@@ -1226,9 +1422,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: Int24, rhs: Int24) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int24.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int24.isSigned)
+            return Int32(lhs) < Int32(rhs)
         }
         public static func < <Other>(lhs: Int24, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -1236,14 +1434,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int24.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int24.isSigned) */
+            
+            return Int32(lhs) < Int32(rhs)
         }
         
         public static func > (lhs: Int24, rhs: Int24) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int32(lhs) > Int32(rhs)
         }
         public static func > <Other>(lhs: Int24, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int32(lhs) > rhs
         }
         
         public static func + (lhs: Int24, rhs: Int24) -> Int24 {
@@ -1288,9 +1490,6 @@ public extension IntOperators {
             return Int24(lhb)
             
         }
-        public static func &=(lhs: inout Int24, rhs: Int24) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: Int24, rhs: Int24) -> Int24  {
             var lhb = lhs.bigEndianBytes
@@ -1304,9 +1503,7 @@ public extension IntOperators {
             return Int24(lhb)
             
         }
-        public static func |=(lhs: inout Int24, rhs: Int24)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: Int24, rhs: Int24) -> Int24  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -1319,9 +1516,7 @@ public extension IntOperators {
             return Int24(lhb)
             
         }
-        public static func ^=(lhs: inout Int24, rhs: Int24)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: Int24, rhs: Int24) -> Int24 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -1349,6 +1544,40 @@ public extension IntOperators {
             return lhs << Int24(rhs)
         }
         
+
+        public static func += (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout Int24, rhs: Int24) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - Int24 - Codable
@@ -1366,11 +1595,6 @@ public extension IntOperators {
     
 
 
-
-    
-
-    
-    
     public struct UInt40: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
     
         /// A type that represents an integer literal.
@@ -1432,11 +1656,13 @@ public extension IntOperators {
         public static let isSigned: Bool = false
         public static let bitWidth: Int = 40
         
-        public static let min: UInt40 = 0
+        public static let min: UInt40 = UInt40()
         public static let max: UInt40 = 1099511627775
         
         
-        public static var zero: UInt40 { return UInt40() }
+        public static let zero: UInt40 = UInt40()
+        internal static let one: UInt40 = 1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -1525,7 +1751,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -1538,7 +1764,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -1683,8 +1910,9 @@ public extension IntOperators {
         
         public func signum() -> UInt40 {
             
-                if self.isZero { return UInt40() }
-                else { return UInt40(1) }
+                if self.isZero { return UInt40.zero }
+                else { return UInt40.one }
+            
             
         }
         
@@ -1704,7 +1932,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: UInt40) -> (partialValue: UInt40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -1720,12 +1948,26 @@ public extension IntOperators {
                     return UInt40($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).addingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt40.max) ||
+               r.partialValue < UInt(UInt40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt40(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: UInt40) -> (partialValue: UInt40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -1740,12 +1982,26 @@ public extension IntOperators {
                     return UInt40($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && UInt40.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).subtractingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt40.max) ||
+               r.partialValue < UInt(UInt40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt40(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: UInt40) -> (high: UInt40, low: UInt40) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: UInt40.isSigned)
             
@@ -1761,11 +2017,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = UInt(self).multipliedFullWidth(by: UInt(other))
+            
+            let val = r.low
+            
+            let high = val >> UInt40.bitWidth
+            let low = val - (high << UInt40.bitWidth)
+            
+            return (high: UInt40(high), low: UInt40(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: UInt40) -> (partialValue: UInt40, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt40(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: UInt40(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = UInt40(truncatingIfNeeded: r.low)
@@ -1779,7 +2046,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt40.zero, overflow: false) }
+            
+            let r = UInt(self).multipliedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt40.max) ||
+               r.partialValue < UInt(UInt40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt40(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: UInt40, low: Magnitude)) -> (quotient: UInt40, remainder: UInt40) {
@@ -1794,7 +2075,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: UInt40) -> (partialValue: UInt40, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: UInt40(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -1802,11 +2083,26 @@ public extension IntOperators {
                 let intValue: UInt = UInt(self.iValue) / UInt(rhs.iValue)
                 let hasOverflow = (intValue > UInt40.max.iValue || intValue < UInt40.min.iValue)
                 return (partialValue: UInt40(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: UInt40.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = UInt(self).dividedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt40.max) ||
+               r.partialValue < UInt(UInt40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt40(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: UInt40) -> (partialValue: UInt40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -1819,7 +2115,13 @@ public extension IntOperators {
             }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = UInt(self).remainderReportingOverflow(dividingBy: UInt(rhs))
+            return (partialValue: UInt40(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: UInt40) -> Int {
@@ -1851,7 +2153,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: UInt40, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -1863,7 +2165,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return UInt(lhs) == rhs
         }
         
         public static func != (lhs: UInt40, rhs: UInt40) -> Bool {
@@ -1874,9 +2178,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: UInt40, rhs: UInt40) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt40.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt40.isSigned)
+            return UInt(lhs) < UInt(rhs)
         }
         public static func < <Other>(lhs: UInt40, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -1884,14 +2190,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt40.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt40.isSigned) */
+            
+            return UInt(lhs) < UInt(rhs)
         }
         
         public static func > (lhs: UInt40, rhs: UInt40) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > UInt(rhs)
         }
         public static func > <Other>(lhs: UInt40, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > rhs
         }
         
         public static func + (lhs: UInt40, rhs: UInt40) -> UInt40 {
@@ -1936,9 +2246,6 @@ public extension IntOperators {
             return UInt40(lhb)
             
         }
-        public static func &=(lhs: inout UInt40, rhs: UInt40) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: UInt40, rhs: UInt40) -> UInt40  {
             var lhb = lhs.bigEndianBytes
@@ -1952,9 +2259,7 @@ public extension IntOperators {
             return UInt40(lhb)
             
         }
-        public static func |=(lhs: inout UInt40, rhs: UInt40)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: UInt40, rhs: UInt40) -> UInt40  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -1967,9 +2272,7 @@ public extension IntOperators {
             return UInt40(lhb)
             
         }
-        public static func ^=(lhs: inout UInt40, rhs: UInt40)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: UInt40, rhs: UInt40) -> UInt40 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -1997,6 +2300,40 @@ public extension IntOperators {
             return lhs << UInt40(rhs)
         }
         
+
+        public static func += (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout UInt40, rhs: UInt40) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - UInt40 - Codable
@@ -2010,7 +2347,6 @@ public extension IntOperators {
             try container.encode(self)
         }
     }
-    
     
     
     public struct Int40: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
@@ -2078,7 +2414,11 @@ public extension IntOperators {
         public static let max: Int40 = 549755813887
         
         
-        public static var zero: Int40 { return Int40() }
+        public static let zero: Int40 = Int40()
+        internal static let one: Int40 = 1
+        
+        internal static let minusOne: Int40 = -1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -2176,7 +2516,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -2189,7 +2529,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -2334,9 +2675,10 @@ public extension IntOperators {
         
         public func signum() -> Int40 {
             
-                if self.isZero { return Int40() }
-                else if self.mostSignificantByte.hasMinusBit { return Int40(-1) }
-                else { return Int40(1) }
+                if self.isZero { return Int40.zero }
+                else if self.mostSignificantByte.hasMinusBit { return Int40.minusOne }
+                else { return Int40.one }
+            
             
         }
         
@@ -2356,7 +2698,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: Int40) -> (partialValue: Int40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -2372,12 +2714,26 @@ public extension IntOperators {
                     return Int40($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).addingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int40.max) ||
+               r.partialValue < Int(Int40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int40(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: Int40) -> (partialValue: Int40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -2392,12 +2748,26 @@ public extension IntOperators {
                     return Int40($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && Int40.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).subtractingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int40.max) ||
+               r.partialValue < Int(Int40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int40(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: Int40) -> (high: Int40, low: UInt40) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: Int40.isSigned)
             
@@ -2413,11 +2783,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = Int(self).multipliedFullWidth(by: Int(other))
+            
+            let val = r.low
+            
+            let high = val >> Int40.bitWidth
+            let low = val - (high << Int40.bitWidth)
+            
+            return (high: Int40(high), low: UInt40(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: Int40) -> (partialValue: Int40, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: Int40(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: Int40(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = Int40(truncatingIfNeeded: r.low)
@@ -2431,7 +2812,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: Int40.zero, overflow: false) }
+            
+            let r = Int(self).multipliedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int40.max) ||
+               r.partialValue < Int(Int40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int40(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: Int40, low: Magnitude)) -> (quotient: Int40, remainder: Int40) {
@@ -2447,7 +2842,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: Int40) -> (partialValue: Int40, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: Int40(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -2455,11 +2850,26 @@ public extension IntOperators {
                 let intValue = self.iValue / rhs.iValue
                 let hasOverflow = (intValue > Int40.max.iValue || intValue < Int40.min.iValue)
                 return (partialValue: Int40(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: Int40.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = Int(self).dividedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int40.max) ||
+               r.partialValue < Int(Int40.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int40(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int40(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: Int40) -> (partialValue: Int40, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -2477,7 +2887,13 @@ public extension IntOperators {
             if isSelfNeg { selfValue = selfValue * -1  }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = Int(self).remainderReportingOverflow(dividingBy: Int(rhs))
+            return (partialValue: Int40(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: Int40) -> Int {
@@ -2512,7 +2928,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: Int40, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -2524,7 +2940,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return Int(lhs) == rhs
         }
         
         public static func != (lhs: Int40, rhs: Int40) -> Bool {
@@ -2535,9 +2953,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: Int40, rhs: Int40) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int40.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int40.isSigned)
+            return Int(lhs) < Int(rhs)
         }
         public static func < <Other>(lhs: Int40, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -2545,14 +2965,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int40.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int40.isSigned) */
+            
+            return Int(lhs) < Int(rhs)
         }
         
         public static func > (lhs: Int40, rhs: Int40) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > Int(rhs)
         }
         public static func > <Other>(lhs: Int40, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > rhs
         }
         
         public static func + (lhs: Int40, rhs: Int40) -> Int40 {
@@ -2597,9 +3021,6 @@ public extension IntOperators {
             return Int40(lhb)
             
         }
-        public static func &=(lhs: inout Int40, rhs: Int40) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: Int40, rhs: Int40) -> Int40  {
             var lhb = lhs.bigEndianBytes
@@ -2613,9 +3034,7 @@ public extension IntOperators {
             return Int40(lhb)
             
         }
-        public static func |=(lhs: inout Int40, rhs: Int40)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: Int40, rhs: Int40) -> Int40  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -2628,9 +3047,7 @@ public extension IntOperators {
             return Int40(lhb)
             
         }
-        public static func ^=(lhs: inout Int40, rhs: Int40)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: Int40, rhs: Int40) -> Int40 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -2658,6 +3075,40 @@ public extension IntOperators {
             return lhs << Int40(rhs)
         }
         
+
+        public static func += (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout Int40, rhs: Int40) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - Int40 - Codable
@@ -2675,11 +3126,6 @@ public extension IntOperators {
     
 
 
-
-    
-
-    
-    
     public struct UInt48: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
     
         /// A type that represents an integer literal.
@@ -2741,11 +3187,13 @@ public extension IntOperators {
         public static let isSigned: Bool = false
         public static let bitWidth: Int = 48
         
-        public static let min: UInt48 = 0
+        public static let min: UInt48 = UInt48()
         public static let max: UInt48 = 281474976710655
         
         
-        public static var zero: UInt48 { return UInt48() }
+        public static let zero: UInt48 = UInt48()
+        internal static let one: UInt48 = 1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -2834,7 +3282,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -2847,7 +3295,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -2996,8 +3445,9 @@ public extension IntOperators {
         
         public func signum() -> UInt48 {
             
-                if self.isZero { return UInt48() }
-                else { return UInt48(1) }
+                if self.isZero { return UInt48.zero }
+                else { return UInt48.one }
+            
             
         }
         
@@ -3017,7 +3467,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: UInt48) -> (partialValue: UInt48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -3033,12 +3483,26 @@ public extension IntOperators {
                     return UInt48($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).addingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt48.max) ||
+               r.partialValue < UInt(UInt48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt48(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: UInt48) -> (partialValue: UInt48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -3053,12 +3517,26 @@ public extension IntOperators {
                     return UInt48($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && UInt48.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).subtractingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt48.max) ||
+               r.partialValue < UInt(UInt48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt48(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: UInt48) -> (high: UInt48, low: UInt48) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: UInt48.isSigned)
             
@@ -3074,11 +3552,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = UInt(self).multipliedFullWidth(by: UInt(other))
+            
+            let val = r.low
+            
+            let high = val >> UInt48.bitWidth
+            let low = val - (high << UInt48.bitWidth)
+            
+            return (high: UInt48(high), low: UInt48(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: UInt48) -> (partialValue: UInt48, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt48(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: UInt48(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = UInt48(truncatingIfNeeded: r.low)
@@ -3092,7 +3581,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt48.zero, overflow: false) }
+            
+            let r = UInt(self).multipliedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt48.max) ||
+               r.partialValue < UInt(UInt48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt48(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: UInt48, low: Magnitude)) -> (quotient: UInt48, remainder: UInt48) {
@@ -3107,7 +3610,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: UInt48) -> (partialValue: UInt48, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: UInt48(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -3115,11 +3618,26 @@ public extension IntOperators {
                 let intValue: UInt = UInt(self.iValue) / UInt(rhs.iValue)
                 let hasOverflow = (intValue > UInt48.max.iValue || intValue < UInt48.min.iValue)
                 return (partialValue: UInt48(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: UInt48.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = UInt(self).dividedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt48.max) ||
+               r.partialValue < UInt(UInt48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt48(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: UInt48) -> (partialValue: UInt48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -3132,7 +3650,13 @@ public extension IntOperators {
             }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = UInt(self).remainderReportingOverflow(dividingBy: UInt(rhs))
+            return (partialValue: UInt48(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: UInt48) -> Int {
@@ -3164,7 +3688,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: UInt48, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -3176,7 +3700,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return UInt(lhs) == rhs
         }
         
         public static func != (lhs: UInt48, rhs: UInt48) -> Bool {
@@ -3187,9 +3713,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: UInt48, rhs: UInt48) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt48.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt48.isSigned)
+            return UInt(lhs) < UInt(rhs)
         }
         public static func < <Other>(lhs: UInt48, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -3197,14 +3725,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt48.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt48.isSigned) */
+            
+            return UInt(lhs) < UInt(rhs)
         }
         
         public static func > (lhs: UInt48, rhs: UInt48) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > UInt(rhs)
         }
         public static func > <Other>(lhs: UInt48, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > rhs
         }
         
         public static func + (lhs: UInt48, rhs: UInt48) -> UInt48 {
@@ -3249,9 +3781,6 @@ public extension IntOperators {
             return UInt48(lhb)
             
         }
-        public static func &=(lhs: inout UInt48, rhs: UInt48) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: UInt48, rhs: UInt48) -> UInt48  {
             var lhb = lhs.bigEndianBytes
@@ -3265,9 +3794,7 @@ public extension IntOperators {
             return UInt48(lhb)
             
         }
-        public static func |=(lhs: inout UInt48, rhs: UInt48)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: UInt48, rhs: UInt48) -> UInt48  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -3280,9 +3807,7 @@ public extension IntOperators {
             return UInt48(lhb)
             
         }
-        public static func ^=(lhs: inout UInt48, rhs: UInt48)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: UInt48, rhs: UInt48) -> UInt48 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -3310,6 +3835,40 @@ public extension IntOperators {
             return lhs << UInt48(rhs)
         }
         
+
+        public static func += (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout UInt48, rhs: UInt48) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - UInt48 - Codable
@@ -3323,7 +3882,6 @@ public extension IntOperators {
             try container.encode(self)
         }
     }
-    
     
     
     public struct Int48: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
@@ -3391,7 +3949,11 @@ public extension IntOperators {
         public static let max: Int48 = 140737488355327
         
         
-        public static var zero: Int48 { return Int48() }
+        public static let zero: Int48 = Int48()
+        internal static let one: Int48 = 1
+        
+        internal static let minusOne: Int48 = -1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -3489,7 +4051,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -3502,7 +4064,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -3651,9 +4214,10 @@ public extension IntOperators {
         
         public func signum() -> Int48 {
             
-                if self.isZero { return Int48() }
-                else if self.mostSignificantByte.hasMinusBit { return Int48(-1) }
-                else { return Int48(1) }
+                if self.isZero { return Int48.zero }
+                else if self.mostSignificantByte.hasMinusBit { return Int48.minusOne }
+                else { return Int48.one }
+            
             
         }
         
@@ -3673,7 +4237,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: Int48) -> (partialValue: Int48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -3689,12 +4253,26 @@ public extension IntOperators {
                     return Int48($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).addingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int48.max) ||
+               r.partialValue < Int(Int48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int48(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: Int48) -> (partialValue: Int48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -3709,12 +4287,26 @@ public extension IntOperators {
                     return Int48($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && Int48.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).subtractingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int48.max) ||
+               r.partialValue < Int(Int48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int48(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: Int48) -> (high: Int48, low: UInt48) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: Int48.isSigned)
             
@@ -3730,11 +4322,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = Int(self).multipliedFullWidth(by: Int(other))
+            
+            let val = r.low
+            
+            let high = val >> Int48.bitWidth
+            let low = val - (high << Int48.bitWidth)
+            
+            return (high: Int48(high), low: UInt48(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: Int48) -> (partialValue: Int48, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: Int48(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: Int48(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = Int48(truncatingIfNeeded: r.low)
@@ -3748,7 +4351,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: Int48.zero, overflow: false) }
+            
+            let r = Int(self).multipliedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int48.max) ||
+               r.partialValue < Int(Int48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int48(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: Int48, low: Magnitude)) -> (quotient: Int48, remainder: Int48) {
@@ -3764,7 +4381,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: Int48) -> (partialValue: Int48, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: Int48(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -3772,11 +4389,26 @@ public extension IntOperators {
                 let intValue = self.iValue / rhs.iValue
                 let hasOverflow = (intValue > Int48.max.iValue || intValue < Int48.min.iValue)
                 return (partialValue: Int48(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: Int48.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = Int(self).dividedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int48.max) ||
+               r.partialValue < Int(Int48.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int48(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int48(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: Int48) -> (partialValue: Int48, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -3794,7 +4426,13 @@ public extension IntOperators {
             if isSelfNeg { selfValue = selfValue * -1  }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = Int(self).remainderReportingOverflow(dividingBy: Int(rhs))
+            return (partialValue: Int48(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: Int48) -> Int {
@@ -3829,7 +4467,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: Int48, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -3841,7 +4479,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return Int(lhs) == rhs
         }
         
         public static func != (lhs: Int48, rhs: Int48) -> Bool {
@@ -3852,9 +4492,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: Int48, rhs: Int48) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int48.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int48.isSigned)
+            return Int(lhs) < Int(rhs)
         }
         public static func < <Other>(lhs: Int48, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -3862,14 +4504,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int48.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int48.isSigned) */
+            
+            return Int(lhs) < Int(rhs)
         }
         
         public static func > (lhs: Int48, rhs: Int48) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > Int(rhs)
         }
         public static func > <Other>(lhs: Int48, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > rhs
         }
         
         public static func + (lhs: Int48, rhs: Int48) -> Int48 {
@@ -3914,9 +4560,6 @@ public extension IntOperators {
             return Int48(lhb)
             
         }
-        public static func &=(lhs: inout Int48, rhs: Int48) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: Int48, rhs: Int48) -> Int48  {
             var lhb = lhs.bigEndianBytes
@@ -3930,9 +4573,7 @@ public extension IntOperators {
             return Int48(lhb)
             
         }
-        public static func |=(lhs: inout Int48, rhs: Int48)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: Int48, rhs: Int48) -> Int48  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -3945,9 +4586,7 @@ public extension IntOperators {
             return Int48(lhb)
             
         }
-        public static func ^=(lhs: inout Int48, rhs: Int48)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: Int48, rhs: Int48) -> Int48 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -3975,6 +4614,40 @@ public extension IntOperators {
             return lhs << Int48(rhs)
         }
         
+
+        public static func += (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout Int48, rhs: Int48) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - Int48 - Codable
@@ -3992,11 +4665,6 @@ public extension IntOperators {
     
 
 
-
-    
-
-    
-    
     public struct UInt56: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
     
         /// A type that represents an integer literal.
@@ -4058,11 +4726,13 @@ public extension IntOperators {
         public static let isSigned: Bool = false
         public static let bitWidth: Int = 56
         
-        public static let min: UInt56 = 0
+        public static let min: UInt56 = UInt56()
         public static let max: UInt56 = 72057594037927935
         
         
-        public static var zero: UInt56 { return UInt56() }
+        public static let zero: UInt56 = UInt56()
+        internal static let one: UInt56 = 1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -4151,7 +4821,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -4164,7 +4834,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -4317,8 +4988,9 @@ public extension IntOperators {
         
         public func signum() -> UInt56 {
             
-                if self.isZero { return UInt56() }
-                else { return UInt56(1) }
+                if self.isZero { return UInt56.zero }
+                else { return UInt56.one }
+            
             
         }
         
@@ -4338,7 +5010,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: UInt56) -> (partialValue: UInt56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -4354,12 +5026,26 @@ public extension IntOperators {
                     return UInt56($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).addingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt56.max) ||
+               r.partialValue < UInt(UInt56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt56(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: UInt56) -> (partialValue: UInt56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -4374,12 +5060,26 @@ public extension IntOperators {
                     return UInt56($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && UInt56.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = UInt(self).subtractingReportingOverflow(UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt56.max) ||
+               r.partialValue < UInt(UInt56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt56(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: UInt56) -> (high: UInt56, low: UInt56) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: UInt56.isSigned)
             
@@ -4395,11 +5095,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = UInt(self).multipliedFullWidth(by: UInt(other))
+            
+            let val = r.low
+            
+            let high = val >> UInt56.bitWidth
+            let low = val - (high << UInt56.bitWidth)
+            
+            return (high: UInt56(high), low: UInt56(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: UInt56) -> (partialValue: UInt56, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt56(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: UInt56(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = UInt56(truncatingIfNeeded: r.low)
@@ -4413,7 +5124,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: UInt56.zero, overflow: false) }
+            
+            let r = UInt(self).multipliedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt56.max) ||
+               r.partialValue < UInt(UInt56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt56(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: UInt56, low: Magnitude)) -> (quotient: UInt56, remainder: UInt56) {
@@ -4428,7 +5153,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: UInt56) -> (partialValue: UInt56, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: UInt56(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -4436,11 +5161,26 @@ public extension IntOperators {
                 let intValue: UInt = UInt(self.iValue) / UInt(rhs.iValue)
                 let hasOverflow = (intValue > UInt56.max.iValue || intValue < UInt56.min.iValue)
                 return (partialValue: UInt56(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: UInt56.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = UInt(self).dividedReportingOverflow(by: UInt(rhs))
+            
+            if r.overflow ||
+               r.partialValue > UInt(UInt56.max) ||
+               r.partialValue < UInt(UInt56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: UInt56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: UInt56(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: UInt56) -> (partialValue: UInt56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -4453,7 +5193,13 @@ public extension IntOperators {
             }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = UInt(self).remainderReportingOverflow(dividingBy: UInt(rhs))
+            return (partialValue: UInt56(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: UInt56) -> Int {
@@ -4485,7 +5231,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: UInt56, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -4497,7 +5243,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return UInt(lhs) == rhs
         }
         
         public static func != (lhs: UInt56, rhs: UInt56) -> Bool {
@@ -4508,9 +5256,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: UInt56, rhs: UInt56) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt56.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt56.isSigned)
+            return UInt(lhs) < UInt(rhs)
         }
         public static func < <Other>(lhs: UInt56, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -4518,14 +5268,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt56.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: UInt56.isSigned) */
+            
+            return UInt(lhs) < UInt(rhs)
         }
         
         public static func > (lhs: UInt56, rhs: UInt56) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > UInt(rhs)
         }
         public static func > <Other>(lhs: UInt56, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return UInt(lhs) > rhs
         }
         
         public static func + (lhs: UInt56, rhs: UInt56) -> UInt56 {
@@ -4570,9 +5324,6 @@ public extension IntOperators {
             return UInt56(lhb)
             
         }
-        public static func &=(lhs: inout UInt56, rhs: UInt56) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: UInt56, rhs: UInt56) -> UInt56  {
             var lhb = lhs.bigEndianBytes
@@ -4586,9 +5337,7 @@ public extension IntOperators {
             return UInt56(lhb)
             
         }
-        public static func |=(lhs: inout UInt56, rhs: UInt56)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: UInt56, rhs: UInt56) -> UInt56  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -4601,9 +5350,7 @@ public extension IntOperators {
             return UInt56(lhb)
             
         }
-        public static func ^=(lhs: inout UInt56, rhs: UInt56)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: UInt56, rhs: UInt56) -> UInt56 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -4631,6 +5378,40 @@ public extension IntOperators {
             return lhs << UInt56(rhs)
         }
         
+
+        public static func += (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout UInt56, rhs: UInt56) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - UInt56 - Codable
@@ -4644,7 +5425,6 @@ public extension IntOperators {
             try container.encode(self)
         }
     }
-    
     
     
     public struct Int56: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
@@ -4712,7 +5492,11 @@ public extension IntOperators {
         public static let max: Int56 = 36028797018963967
         
         
-        public static var zero: Int56 { return Int56() }
+        public static let zero: Int56 = Int56()
+        internal static let one: Int56 = 1
+        
+        internal static let minusOne: Int56 = -1
+        
         
         /// Creates custom mirror to hide all details about ourselves
         public var customMirror: Mirror { return Mirror(self, children: EmptyCollection()) }
@@ -4810,7 +5594,7 @@ public extension IntOperators {
         
         /// Internal property used in basic operations
         fileprivate var iValue: Int {
-            guard !self.isZero else { return 0 }
+            /*guard !self.isZero else { return 0 }
             
             var bytes = self.bigEndian.bytes
             bytes = IntLogic.resizeBinaryInteger(bytes, newSizeInBytes: (Int.bitWidth / 8), isNegative: self.isNegative)
@@ -4823,7 +5607,8 @@ public extension IntOperators {
                 }
             }
             
-            return rtn
+            return rtn*/
+            return Int(self)
         }
         
         #if !swift(>=4.0.9)
@@ -4976,9 +5761,10 @@ public extension IntOperators {
         
         public func signum() -> Int56 {
             
-                if self.isZero { return Int56() }
-                else if self.mostSignificantByte.hasMinusBit { return Int56(-1) }
-                else { return Int56(1) }
+                if self.isZero { return Int56.zero }
+                else if self.mostSignificantByte.hasMinusBit { return Int56.minusOne }
+                else { return Int56.one }
+            
             
         }
         
@@ -4998,7 +5784,7 @@ public extension IntOperators {
         }
         
         public func addingReportingOverflow(_ rhs: Int56) -> (partialValue: Int56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             guard !self.isZero else { return (partialValue: rhs, overflow: false)  }
             
             let r = IntLogic.binaryAddition(self.bigEndian.bytes,
@@ -5014,12 +5800,26 @@ public extension IntOperators {
                     return Int56($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !self.isZero else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).addingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int56.max) ||
+               r.partialValue < Int(Int56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int56(r.partialValue), overflow: false)
             
         }
         
         public func subtractingReportingOverflow(_ rhs: Int56) -> (partialValue: Int56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: false)  }
             
             let r = IntLogic.binarySubtraction(self.bigEndian.bytes,
                                                rhs.bigEndian.bytes,
@@ -5034,12 +5834,26 @@ public extension IntOperators {
                     return Int56($0.pointee)
                 }
             }
-            return (partialValue: value, overflow: r.overflow)
+            return (partialValue: value, overflow: r.overflow)*/
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: false) }
+            guard !(self.isZero && Int56.isSigned) else { return (partialValue: rhs, overflow: false) }
+            
+            let r = Int(self).subtractingReportingOverflow(Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int56.max) ||
+               r.partialValue < Int(Int56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int56(r.partialValue), overflow: false)
             
         }
         
         public func multipliedFullWidth(by other: Int56) -> (high: Int56, low: UInt56) {
-            let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
+            /*let r = IntLogic.binaryMultiplication(self.bigEndian.bytes,
                                                   other.bigEndian.bytes,
                                                   isSigned: Int56.isSigned)
             
@@ -5055,11 +5869,22 @@ public extension IntOperators {
                 }
             }
             
-            return (high: high, low: low)
+            return (high: high, low: low)*/
+            
+            
+            let r = Int(self).multipliedFullWidth(by: Int(other))
+            
+            let val = r.low
+            
+            let high = val >> Int56.bitWidth
+            let low = val - (high << Int56.bitWidth)
+            
+            return (high: Int56(high), low: UInt56(low))
+            
         }
         
         public func multipliedReportingOverflow(by rhs: Int56) -> (partialValue: Int56, overflow: Bool) {
-            guard !self.isZero && !rhs.isZero else { return (partialValue: Int56(), overflow: false)  }
+            /*guard !self.isZero && !rhs.isZero else { return (partialValue: Int56(), overflow: false)  }
             
             let r = self.multipliedFullWidth(by: rhs)
             let val = Int56(truncatingIfNeeded: r.low)
@@ -5073,7 +5898,21 @@ public extension IntOperators {
                 if xor(self.isNegative, rhs.isNegative) && !val.isNegative { overflow = true }
             }
             
-            return (partialValue: val, overflow: overflow)
+            return (partialValue: val, overflow: overflow)*/
+            
+            guard !self.isZero && !rhs.isZero else { return (partialValue: Int56.zero, overflow: false) }
+            
+            let r = Int(self).multipliedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int56.max) ||
+               r.partialValue < Int(Int56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int56(r.partialValue), overflow: false)
+            
         }
         
         public func dividingFullWidth(_ dividend: (high: Int56, low: Magnitude)) -> (quotient: Int56, remainder: Int56) {
@@ -5089,7 +5928,7 @@ public extension IntOperators {
         }
         
         public func dividedReportingOverflow(by rhs: Int56) -> (partialValue: Int56, overflow: Bool) {
-            // We are cheating here.  Instead of using our own code.  we are casting as base Int type
+            /*// We are cheating here.  Instead of using our own code.  we are casting as base Int type
             guard !self.isZero else { return (partialValue: Int56(), overflow: false)  }
             guard !rhs.isZero else { return (partialValue: self, overflow: true)   }
             
@@ -5097,11 +5936,26 @@ public extension IntOperators {
                 let intValue = self.iValue / rhs.iValue
                 let hasOverflow = (intValue > Int56.max.iValue || intValue < Int56.min.iValue)
                 return (partialValue: Int56(truncatingIfNeeded: intValue), overflow: hasOverflow)
+            */
+            
+            guard !self.isZero else { return (partialValue: Int56.zero, overflow: false)  }
+            guard !rhs.isZero else { return (partialValue: self, overflow: true) }
+            
+            let r = Int(self).dividedReportingOverflow(by: Int(rhs))
+            
+            if r.overflow ||
+               r.partialValue > Int(Int56.max) ||
+               r.partialValue < Int(Int56.min) {
+                // Overflows over the bounds of our int
+                return (partialValue: Int56(truncatingIfNeeded: r.partialValue), overflow: true)
+            }
+            
+            return (partialValue: Int56(r.partialValue), overflow: false)
             
         }
     
         public func remainderReportingOverflow(dividingBy rhs: Int56) -> (partialValue: Int56, overflow: Bool) {
-            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            /*guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
             
             var selfValue = self
             let rhsValue = rhs
@@ -5119,7 +5973,13 @@ public extension IntOperators {
             if isSelfNeg { selfValue = selfValue * -1  }
             
             
-            return (partialValue: selfValue, overflow: false)
+            return (partialValue: selfValue, overflow: false)*/
+            
+            
+            guard !rhs.isZero else { return (partialValue: self, overflow: true)  }
+            
+            let r = Int(self).remainderReportingOverflow(dividingBy: Int(rhs))
+            return (partialValue: Int56(r.partialValue), overflow: r.overflow)
         }
         
         public func distance(to other: Int56) -> Int {
@@ -5154,7 +6014,7 @@ public extension IntOperators {
             return lhs.bytes == rhs.bytes
         }
         public static func == <Other>(lhs: Int56, rhs: Other) -> Bool where Other : BinaryInteger {
-            
+            /*
             // If the two numbers don't have the same sign, we will return false right away
             guard (lhs.isNegative == rhs.isNegative) else { return false }
             
@@ -5166,7 +6026,9 @@ public extension IntOperators {
             let rhb = IntLogic.minimizeBinaryInteger(rhs.bigEndianBytes, isSigned: Other.isSigned)
             
             
-            return (lhb == rhb)
+            return (lhb == rhb)*/
+            
+            return Int(lhs) == rhs
         }
         
         public static func != (lhs: Int56, rhs: Int56) -> Bool {
@@ -5177,9 +6039,11 @@ public extension IntOperators {
         }
         
         public static func < (lhs: Int56, rhs: Int56) -> Bool {
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int56.isSigned)
+            //return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int56.isSigned)
+            return Int(lhs) < Int(rhs)
         }
         public static func < <Other>(lhs: Int56, rhs: Other) -> Bool where Other : BinaryInteger {
+            /*
             // -A < B ?
             if lhs.isNegative && !rhs.isNegative { return true }
             // A < -B
@@ -5187,14 +6051,18 @@ public extension IntOperators {
             
             // We don't care about the signed flag on the rhs type because
             // for formulate will be -A < -B || A < B so the sign on A will be the same as the sign on B
-            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int56.isSigned)
+            return IntLogic.binaryIsLessThan(lhs.bigEndian.bytes, rhs.bigEndianBytes, isSigned: Int56.isSigned) */
+            
+            return Int(lhs) < Int(rhs)
         }
         
         public static func > (lhs: Int56, rhs: Int56) -> Bool {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > Int(rhs)
         }
         public static func > <Other>(lhs: Int56, rhs: Other) -> Bool where Other : BinaryInteger {
-            return ((lhs != rhs) && !(lhs < rhs))
+            //return ((lhs != rhs) && !(lhs < rhs))
+            return Int(lhs) > rhs
         }
         
         public static func + (lhs: Int56, rhs: Int56) -> Int56 {
@@ -5239,9 +6107,6 @@ public extension IntOperators {
             return Int56(lhb)
             
         }
-        public static func &=(lhs: inout Int56, rhs: Int56) {
-            lhs = lhs & rhs
-        }
         
         public static func | (lhs: Int56, rhs: Int56) -> Int56  {
             var lhb = lhs.bigEndianBytes
@@ -5255,9 +6120,7 @@ public extension IntOperators {
             return Int56(lhb)
             
         }
-        public static func |=(lhs: inout Int56, rhs: Int56)  {
-            lhs = lhs | rhs
-        }
+        
         public static func ^ (lhs: Int56, rhs: Int56) -> Int56  {
             var lhb = lhs.bigEndianBytes
             let rhb = rhs.bigEndianBytes
@@ -5270,9 +6133,7 @@ public extension IntOperators {
             return Int56(lhb)
             
         }
-        public static func ^=(lhs: inout Int56, rhs: Int56)  {
-            lhs = lhs ^ rhs
-        }
+        
         public static func >>(lhs: Int56, rhs: Int56) -> Int56 {
             guard !rhs.isZero else { return lhs }
             var bytes = IntLogic.bitShiftRight(lhs.bigEndian.bytes, count: Int(rhs), isNegative: lhs.isNegative)
@@ -5300,6 +6161,40 @@ public extension IntOperators {
             return lhs << Int56(rhs)
         }
         
+
+        public static func += (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs + rhs
+        }
+
+        public static func -= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs - rhs
+        }
+
+        public static func *= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs * rhs
+        }
+
+        public static func /= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs / rhs
+        }
+
+        public static func %= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs % rhs
+        }
+
+        public static func |= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs | rhs
+        }
+
+        public static func &= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs & rhs
+        }
+
+        public static func ^= (lhs: inout Int56, rhs: Int56) {
+            lhs = lhs ^ rhs
+        }
+
+
     }
     
     /// MARK: - Int56 - Codable
