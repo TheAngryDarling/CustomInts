@@ -9,78 +9,15 @@
 //
 
 import Foundation
-
-
-
-public protocol IntOperators {
-    
-    static func + (lhs: Self, rhs: Self) -> Self
-    static func += (lhs: inout Self, rhs: Self)
-    
-    static func - (lhs: Self, rhs: Self) -> Self
-    static func -= (lhs: inout Self, rhs: Self)
-    
-    static func * (lhs: Self, rhs: Self) -> Self
-    static func *= (lhs: inout Self, rhs: Self)
-    
-    static func / (lhs: Self, rhs: Self) -> Self
-    static func /= (lhs: inout Self, rhs: Self)
-    
-    static func % (lhs: Self, rhs: Self) -> Self
-    static func %= (lhs: inout Self, rhs: Self)
-    
-    static func | (lhs: Self, rhs: Self) -> Self
-    static func |= (lhs: inout Self, rhs: Self)
-    
-    static func & (lhs: Self, rhs: Self) -> Self
-    static func &= (lhs: inout Self, rhs: Self)
-    
-    static func ^ (lhs: Self, rhs: Self) -> Self
-    static func ^= (lhs: inout Self, rhs: Self)
-    
-}
-
-public extension IntOperators {
-
-    static func += (lhs: inout Self, rhs: Self) {
-        lhs = lhs + rhs
-    }
-
-    static func -= (lhs: inout Self, rhs: Self) {
-        lhs = lhs - rhs
-    }
-
-    static func *= (lhs: inout Self, rhs: Self) {
-        lhs = lhs * rhs
-    }
-
-    static func /= (lhs: inout Self, rhs: Self) {
-        lhs = lhs / rhs
-    }
-
-    static func %= (lhs: inout Self, rhs: Self) {
-        lhs = lhs % rhs
-    }
-
-    static func |= (lhs: inout Self, rhs: Self) {
-        lhs = lhs | rhs
-    }
-
-    static func &= (lhs: inout Self, rhs: Self) {
-        lhs = lhs & rhs
-    }
-
-    static func ^= (lhs: inout Self, rhs: Self) {
-        lhs = lhs ^ rhs
-    }
-
-}
+import NumericPatches
 
 
 
 
 
-    public struct UInt24: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
+
+
+    public struct UInt24: FixedWidthInteger, UnsignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = UInt32
@@ -813,6 +750,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension UInt24: AdditiveArithmetic { }
+    #endif
     /// MARK: - UInt24 - Codable
     extension UInt24: Codable {
         public init(from decoder: Decoder) throws {
@@ -826,7 +766,7 @@ public extension IntOperators {
     }
     
     
-    public struct Int24: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
+    public struct Int24: FixedWidthInteger, SignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = Int32
@@ -1580,6 +1520,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension Int24: AdditiveArithmetic { }
+    #endif
     /// MARK: - Int24 - Codable
     extension Int24: Codable {
         public init(from decoder: Decoder) throws {
@@ -1595,7 +1538,7 @@ public extension IntOperators {
     
 
 
-    public struct UInt40: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
+    public struct UInt40: FixedWidthInteger, UnsignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = UInt64
@@ -2336,6 +2279,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension UInt40: AdditiveArithmetic { }
+    #endif
     /// MARK: - UInt40 - Codable
     extension UInt40: Codable {
         public init(from decoder: Decoder) throws {
@@ -2349,7 +2295,7 @@ public extension IntOperators {
     }
     
     
-    public struct Int40: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
+    public struct Int40: FixedWidthInteger, SignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = Int64
@@ -3111,6 +3057,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension Int40: AdditiveArithmetic { }
+    #endif
     /// MARK: - Int40 - Codable
     extension Int40: Codable {
         public init(from decoder: Decoder) throws {
@@ -3126,7 +3075,7 @@ public extension IntOperators {
     
 
 
-    public struct UInt48: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
+    public struct UInt48: FixedWidthInteger, UnsignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = UInt64
@@ -3871,6 +3820,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension UInt48: AdditiveArithmetic { }
+    #endif
     /// MARK: - UInt48 - Codable
     extension UInt48: Codable {
         public init(from decoder: Decoder) throws {
@@ -3884,7 +3836,7 @@ public extension IntOperators {
     }
     
     
-    public struct Int48: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
+    public struct Int48: FixedWidthInteger, SignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = Int64
@@ -4650,6 +4602,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension Int48: AdditiveArithmetic { }
+    #endif
     /// MARK: - Int48 - Codable
     extension Int48: Codable {
         public init(from decoder: Decoder) throws {
@@ -4665,7 +4620,7 @@ public extension IntOperators {
     
 
 
-    public struct UInt56: FixedWidthInteger, UnsignedInteger, IntOperators, CustomReflectable {
+    public struct UInt56: FixedWidthInteger, UnsignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = UInt64
@@ -5414,6 +5369,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension UInt56: AdditiveArithmetic { }
+    #endif
     /// MARK: - UInt56 - Codable
     extension UInt56: Codable {
         public init(from decoder: Decoder) throws {
@@ -5427,7 +5385,7 @@ public extension IntOperators {
     }
     
     
-    public struct Int56: FixedWidthInteger, SignedInteger, IntOperators, CustomReflectable {
+    public struct Int56: FixedWidthInteger, SignedInteger, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = Int64
@@ -6197,6 +6155,9 @@ public extension IntOperators {
 
     }
     
+    #if !swift(>=5.0)
+    extension Int56: AdditiveArithmetic { }
+    #endif
     /// MARK: - Int56 - Codable
     extension Int56: Codable {
         public init(from decoder: Decoder) throws {
@@ -6215,18 +6176,15 @@ public extension IntOperators {
 
 public extension UnkeyedDecodingContainer {
     
-    
     mutating func decode(_ type: UInt24.Type) throws -> UInt24 {
-        let value = try self.decode(UInt.self)
+        let value = try self.decode(UInt32.self)
         return UInt24(value)
     }
     
     mutating func decode(_ type: Int24.Type) throws -> Int24 {
-        let value = try self.decode(Int.self)
+        let value = try self.decode(Int32.self)
         return Int24(value)
     }
-    
-    
     
     mutating func decode(_ type: UInt40.Type) throws -> UInt40 {
         let value = try self.decode(UInt.self)
@@ -6238,8 +6196,6 @@ public extension UnkeyedDecodingContainer {
         return Int40(value)
     }
     
-    
-    
     mutating func decode(_ type: UInt48.Type) throws -> UInt48 {
         let value = try self.decode(UInt.self)
         return UInt48(value)
@@ -6250,8 +6206,6 @@ public extension UnkeyedDecodingContainer {
         return Int48(value)
     }
     
-    
-    
     mutating func decode(_ type: UInt56.Type) throws -> UInt56 {
         let value = try self.decode(UInt.self)
         return UInt56(value)
@@ -6261,24 +6215,20 @@ public extension UnkeyedDecodingContainer {
         let value = try self.decode(Int.self)
         return Int56(value)
     }
-    
     
 }
 
 public extension SingleValueDecodingContainer {
     
-    
     mutating func decode(_ type: UInt24.Type) throws -> UInt24 {
-        let value = try self.decode(UInt.self)
+        let value = try self.decode(UInt32.self)
         return UInt24(value)
     }
     
     mutating func decode(_ type: Int24.Type) throws -> Int24 {
-        let value = try self.decode(Int.self)
+        let value = try self.decode(Int32.self)
         return Int24(value)
     }
-    
-    
     
     mutating func decode(_ type: UInt40.Type) throws -> UInt40 {
         let value = try self.decode(UInt.self)
@@ -6290,8 +6240,6 @@ public extension SingleValueDecodingContainer {
         return Int40(value)
     }
     
-    
-    
     mutating func decode(_ type: UInt48.Type) throws -> UInt48 {
         let value = try self.decode(UInt.self)
         return UInt48(value)
@@ -6301,8 +6249,6 @@ public extension SingleValueDecodingContainer {
         let value = try self.decode(Int.self)
         return Int48(value)
     }
-    
-    
     
     mutating func decode(_ type: UInt56.Type) throws -> UInt56 {
         let value = try self.decode(UInt.self)
@@ -6314,23 +6260,19 @@ public extension SingleValueDecodingContainer {
         return Int56(value)
     }
     
-    
 }
 
 public extension KeyedDecodingContainer {
     
-    
     mutating func decode(_ type: UInt24.Type, forKey key: KeyedDecodingContainer.Key) throws -> UInt24 {
-        let value = try self.decode(UInt.self, forKey: key)
+        let value = try self.decode(UInt32.self, forKey: key)
         return UInt24(value)
     }
     
     mutating func decode(_ type: Int24.Type, forKey key: KeyedDecodingContainer.Key) throws -> Int24 {
-        let value = try self.decode(Int.self, forKey: key)
+        let value = try self.decode(Int32.self, forKey: key)
         return Int24(value)
     }
-    
-    
     
     mutating func decode(_ type: UInt40.Type, forKey key: KeyedDecodingContainer.Key) throws -> UInt40 {
         let value = try self.decode(UInt.self, forKey: key)
@@ -6342,8 +6284,6 @@ public extension KeyedDecodingContainer {
         return Int40(value)
     }
     
-    
-    
     mutating func decode(_ type: UInt48.Type, forKey key: KeyedDecodingContainer.Key) throws -> UInt48 {
         let value = try self.decode(UInt.self, forKey: key)
         return UInt48(value)
@@ -6353,8 +6293,6 @@ public extension KeyedDecodingContainer {
         let value = try self.decode(Int.self, forKey: key)
         return Int48(value)
     }
-    
-    
     
     mutating func decode(_ type: UInt56.Type, forKey key: KeyedDecodingContainer.Key) throws -> UInt56 {
         let value = try self.decode(UInt.self, forKey: key)
@@ -6366,155 +6304,127 @@ public extension KeyedDecodingContainer {
         return Int56(value)
     }
     
-    
 }
 
 public extension UnkeyedEncodingContainer {
     
+    mutating func encode(_ value: UInt24) throws {
+        try self.encode(UInt32(value))
+    }
     
-     mutating func encode(_ value: UInt24) throws {
+    mutating func encode(_ value: Int24) throws {
+        try self.encode(Int32(value))
+    }
+    
+    mutating func encode(_ value: UInt40) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int24) throws {
+    mutating func encode(_ value: Int40) throws {
         try self.encode(Int(value))
     }
     
-    
-    
-     mutating func encode(_ value: UInt40) throws {
+    mutating func encode(_ value: UInt48) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int40) throws {
+    mutating func encode(_ value: Int48) throws {
         try self.encode(Int(value))
     }
     
-    
-    
-     mutating func encode(_ value: UInt48) throws {
+    mutating func encode(_ value: UInt56) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int48) throws {
+    mutating func encode(_ value: Int56) throws {
         try self.encode(Int(value))
     }
-    
-    
-    
-     mutating func encode(_ value: UInt56) throws {
-        try self.encode(UInt(value))
-    }
-    
-     mutating func encode(_ value: Int56) throws {
-        try self.encode(Int(value))
-    }
-    
     
 }
 
 public extension SingleValueEncodingContainer {
     
+    mutating func encode(_ value: UInt24) throws {
+        try self.encode(UInt32(value))
+    }
     
-     mutating func encode(_ value: UInt24) throws {
+    mutating func encode(_ value: Int24) throws {
+        try self.encode(Int32(value))
+    }
+    
+    mutating func encode(_ value: UInt40) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int24) throws {
+    mutating func encode(_ value: Int40) throws {
         try self.encode(Int(value))
     }
     
-    
-    
-     mutating func encode(_ value: UInt40) throws {
+    mutating func encode(_ value: UInt48) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int40) throws {
+    mutating func encode(_ value: Int48) throws {
         try self.encode(Int(value))
     }
     
-    
-    
-     mutating func encode(_ value: UInt48) throws {
+    mutating func encode(_ value: UInt56) throws {
         try self.encode(UInt(value))
     }
     
-     mutating func encode(_ value: Int48) throws {
+    mutating func encode(_ value: Int56) throws {
         try self.encode(Int(value))
     }
-    
-    
-    
-     mutating func encode(_ value: UInt56) throws {
-        try self.encode(UInt(value))
-    }
-    
-     mutating func encode(_ value: Int56) throws {
-        try self.encode(Int(value))
-    }
-    
     
 }
 
 public extension KeyedEncodingContainer {
     
+    mutating func encode(_ value: UInt24, forKey key: Key) throws {
+        try self.encode(UInt32(value), forKey: key)
+    }
     
-     mutating func encode(_ value: UInt24, forKey key: Key) throws {
+    mutating func encode(_ value: Int24, forKey key: Key) throws {
+        try self.encode(Int32(value), forKey: key)
+    }
+    
+    mutating func encode(_ value: UInt40, forKey key: Key) throws {
         try self.encode(UInt(value), forKey: key)
     }
     
-     mutating func encode(_ value: Int24, forKey key: Key) throws {
+    mutating func encode(_ value: Int40, forKey key: Key) throws {
         try self.encode(Int(value), forKey: key)
     }
     
-    
-    
-     mutating func encode(_ value: UInt40, forKey key: Key) throws {
+    mutating func encode(_ value: UInt48, forKey key: Key) throws {
         try self.encode(UInt(value), forKey: key)
     }
     
-     mutating func encode(_ value: Int40, forKey key: Key) throws {
+    mutating func encode(_ value: Int48, forKey key: Key) throws {
         try self.encode(Int(value), forKey: key)
     }
     
-    
-    
-     mutating func encode(_ value: UInt48, forKey key: Key) throws {
+    mutating func encode(_ value: UInt56, forKey key: Key) throws {
         try self.encode(UInt(value), forKey: key)
     }
     
-     mutating func encode(_ value: Int48, forKey key: Key) throws {
+    mutating func encode(_ value: Int56, forKey key: Key) throws {
         try self.encode(Int(value), forKey: key)
     }
-    
-    
-    
-     mutating func encode(_ value: UInt56, forKey key: Key) throws {
-        try self.encode(UInt(value), forKey: key)
-    }
-    
-     mutating func encode(_ value: Int56, forKey key: Key) throws {
-        try self.encode(Int(value), forKey: key)
-    }
-    
     
 }
 
 public extension NSNumber {
     
-    
     @nonobjc
     convenience init(value:  UInt24) {
-        self.init(value: UInt(value))
+        self.init(value: UInt32(value))
     }
     
     @nonobjc
     convenience init(value:  Int24) {
-        self.init(value: Int(value))
+        self.init(value: Int32(value))
     }
-    
-    
     
     @nonobjc
     convenience init(value:  UInt40) {
@@ -6526,8 +6436,6 @@ public extension NSNumber {
         self.init(value: Int(value))
     }
     
-    
-    
     @nonobjc
     convenience init(value:  UInt48) {
         self.init(value: UInt(value))
@@ -6538,8 +6446,6 @@ public extension NSNumber {
         self.init(value: Int(value))
     }
     
-    
-    
     @nonobjc
     convenience init(value:  UInt56) {
         self.init(value: UInt(value))
@@ -6549,6 +6455,5 @@ public extension NSNumber {
     convenience init(value:  Int56) {
         self.init(value: Int(value))
     }
-    
     
 }

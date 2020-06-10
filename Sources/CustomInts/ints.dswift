@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NumericPatches
 
 <%!
 #if !_runtime(_ObjC)
@@ -18,21 +19,6 @@ func pow(_ base: Int, _ exponent: Int) -> Int {
 
 let intOperators: [String] = ["+", "-", "*", "/", "%", "|", "&", "^"]
 %>
-
-public protocol IntOperators {
-    <% for op in intOperators { %>
-    static func <%=op%> (lhs: Self, rhs: Self) -> Self
-    static func <%=op%>= (lhs: inout Self, rhs: Self)
-    <% } %>
-}
-
-public extension IntOperators {
-<%  for op in intOperators { %>
-    static func <%=op%>= (lhs: inout Self, rhs: Self) {
-        lhs = lhs <%=op%> rhs
-    }
-<%  } %>
-}
 
 <%
 func getClosestIntLiteral(_ size: Int) -> Int {
@@ -89,7 +75,7 @@ let varCharacters = Array("abcdefghijklmnopqrstuvwxyz")
         let intMagnitude: String = "UInt\(intSize)"
         let fullSignedText: String = isSigned ? "Signed" : "Unsigned"
     %>
-    public struct <%=intSelf%>: FixedWidthInteger, <%=fullSignedText%>Integer, IntOperators, CustomReflectable {
+    public struct <%=intSelf%>: FixedWidthInteger, <%=fullSignedText%>Integer, CustomReflectable {
     
         /// A type that represents an integer literal.
         public typealias IntegerLiteralType = <%=sign%>Int<%=getClosestIntLiteral(intSize)%>
@@ -836,6 +822,9 @@ let varCharacters = Array("abcdefghijklmnopqrstuvwxyz")
 
     }
     
+    #if !swift(>=5.0)
+    extension <%=intSelf%>: AdditiveArithmetic { }
+    #endif
     /// MARK: - <%=intSelf%> - Codable
     extension <%=intSelf%>: Codable {
         public init(from decoder: Decoder) throws {
@@ -853,75 +842,110 @@ let varCharacters = Array("abcdefghijklmnopqrstuvwxyz")
 <% } %>
 
 public extension UnkeyedDecodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
     mutating func decode(_ type: <%=sign%>Int<%=intSize%>.Type) throws -> <%=sign%>Int<%=intSize%> {
-        let value = try self.decode(<%=sign%>Int.self)
+        let value = try self.decode(<%=nextRealInt%>.self)
         return <%=sign%>Int<%=intSize%>(value)
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension SingleValueDecodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
     mutating func decode(_ type: <%=sign%>Int<%=intSize%>.Type) throws -> <%=sign%>Int<%=intSize%> {
-        let value = try self.decode(<%=sign%>Int.self)
+        let value = try self.decode(<%=nextRealInt%>.self)
         return <%=sign%>Int<%=intSize%>(value)
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension KeyedDecodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
     mutating func decode(_ type: <%=sign%>Int<%=intSize%>.Type, forKey key: KeyedDecodingContainer.Key) throws -> <%=sign%>Int<%=intSize%> {
-        let value = try self.decode(<%=sign%>Int.self, forKey: key)
+        let value = try self.decode(<%=nextRealInt%>.self, forKey: key)
         return <%=sign%>Int<%=intSize%>(value)
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension UnkeyedEncodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
-     mutating func encode(_ value: <%=sign%>Int<%=intSize%>) throws {
-        try self.encode(<%=sign%>Int(value))
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
+    mutating func encode(_ value: <%=sign%>Int<%=intSize%>) throws {
+        try self.encode(<%=nextRealInt%>(value))
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension SingleValueEncodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
-     mutating func encode(_ value: <%=sign%>Int<%=intSize%>) throws {
-        try self.encode(<%=sign%>Int(value))
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
+    mutating func encode(_ value: <%=sign%>Int<%=intSize%>) throws {
+        try self.encode(<%=nextRealInt%>(value))
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension KeyedEncodingContainer {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
-     mutating func encode(_ value: <%=sign%>Int<%=intSize%>, forKey key: Key) throws {
-        try self.encode(<%=sign%>Int(value), forKey: key)
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
+    mutating func encode(_ value: <%=sign%>Int<%=intSize%>, forKey key: Key) throws {
+        try self.encode(<%=nextRealInt%>(value), forKey: key)
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
 
 public extension NSNumber {
-    <% for intSize in customIntSizes { %>
-    <% for sign in ["U", ""] { %>
+    <%
+    for intSize in customIntSizes {
+        for sign in ["U", ""] {
+            let nextRealInt: String = "\(sign)\(nextRealIntType(for: intSize))"
+    %>
     @nonobjc
     convenience init(value:  <%=sign%>Int<%=intSize%>) {
-        self.init(value: <%=sign%>Int(value))
+        self.init(value: <%=nextRealInt%>(value))
     }
-    <% } %>
-    <% } %>
+    <%
+        }
+    }
+    %>
 }
